@@ -1,0 +1,1021 @@
+\documentclass[11pt, oneside]{article}   	% use "amsart" instead of "article" for AMSLaTeX format
+\usepackage{geometry}                		% See geometry.pdf to learn the layout options. There are lots.
+\geometry{letterpaper}                   		% ... or a4paper or a5paper or ... 
+%\geometry{landscape}                		% Activate for for rotated page geometry
+\usepackage[parfill]{parskip}    		% Activate to begin paragraphs with an empty line rather than an indent
+\usepackage{graphicx}				% Use pdf, png, jpg, or eps§ with pdflatex; use eps in DVI mode
+								% TeX will automatically convert eps --> pdf in pdflatex		
+\usepackage{amssymb}
+
+\title{Optimally Sorting a List of Indices}
+\author{Kwaai (/u/Qwaai)}
+%\date{}							% Activate to display a given date or no date
+
+\begin{document}
+\maketitle
+
+\section{Problem}
+You need to sort your tab-screen, but if you take too long you lose valuable time tilting your opponents with clever witticisms in /all chat. You want to swap as few player frames as possible, as well as minimizing the distance you have to move each frame. Moving the top laner from the jungle position to the support position and finally to the top position is garbage and you should feel bad for doing it, so we seek to find the optimal sorting method. The following is a slightly more formal definition of the problem:
+
+Sort a list of indices in as few moves as possible, while minimizing the total swapped distance. The total swapped distance is defined by the cost function:\
+\begin{center}
+$$cost = \sum_{i=0}^{n}second\_index\_of\_swap(i) - first\_index\_of\_swap(i)$$
+\end{center}
+
+Where $n$ is the number of swaps required to sort the list. 
+
+In the example above, with the top laner starting in the jungle position, moving him/her to the the support position costs 3, and moving him/her from support to top costs 4, for a total of 7. Moving the top laner from jungle to top would cost 1.
+
+\subsection{Clarifications}
+
+The term `swap' is used to indicate changing the position of two elements in the list. An example is shown below.
+
+$second\_index\_of\_swap(i)$ and $first\_index\_of\_swap(i)$ return the indices of the swapped values for this swap operation. For example, if we have the list
+
+\begin{center}$[1, 0, 2, 3]$\end{center} and we swap the $0$ and $1$:
+
+\begin{center}$second\_index\_of\_swap(i) = 1$ \\ $first\_index\_of\_swap(i) = 0$\end{center}
+
+so the cost for that swap is: \begin{center} $1 - 0 = 1$\end{center} and the list now appears as:
+
+\begin{center}$[0, 1, 2, 3]$\end{center}
+
+\subsection{Assumptions}
+
+The input list (of length $n$) will be structured such that the indices it contains, when sorted, will be in the form: 
+
+\begin{center}$[0, 1, ... n-1]$\end{center}
+
+The input list is initially randomly shuffled. We make no assumption as to differing likelihoods of top lane being more in demand than, say, support, which would create a bias of top laners starting earlier in the list.
+
+\subsection{Observations}
+
+After a swap, one element will be in it's final location and can be ignored for the remainder of the problem, for reasons stated above. The other element will have started some distance from its final location. It's new location is either closer to, further from, or the same distance to it's final location as it's initial location was. If it is further from it's final location we have increased the cost of some future swap, as that distance will have to be swapped over in the future. If it is closer, we have decreased the cost of some future swap. If it is the same we have done nothing to the cost of a future swap.
+
+\pagebreak
+
+\section{Algorithm}
+
+Our observations lend to a greedy approach, and the cost function is intuitive: we pay for the distance of the swap, but reclaim for distance we don't have to pay for in future swaps. Thus, in determining which swap to make on a given iteration:
+
+\begin{center}
+$$argmin\sum_{i=0}^{n-1}\sum_{j=0}^{n-1}|i - j| + max(\Delta L[i], \Delta L[j])$$
+\end{center}
+
+Such that:
+
+\begin{center}
+$i < j$\\
+$\Delta L[x]$ represents the change in distance of an \\element from it's initial position to it's final position
+\end{center}
+
+For example, given the list:
+
+\begin{center}$[1, 0, 3, 2, 4]$\end{center}
+
+The cost of swapping $1$ and $0$ is:
+
+\begin{center}
+$|0 - 1| + max((-1),(-1)) = 0$
+\end{center}
+
+The negative deltas indicate each number has moved closer to it's final position. Astute readers will note that the cost of this swap is 0. This corresponds to having payed $1$ to swap an element into it's final location (we only moved it one index over), and then having moved another element one spot closer to it's final location. 
+
+The algorithm, in total, is as follows:
+
+While the list is unsorted, determine the best swap to make, such that one of the elements in the swap is placed in its final location while minimizing the distance the other element has to travel to its final location. 
+
+\subsection{Examples}
+
+Given the list:
+
+\begin{center}$[1, 0, 2, 4, 3]$\end{center}
+
+we make the following swaps:
+
+\begin{center}
+$[0, 1, 2, 4, 3]\ (0\ and\ 1)$\\
+$[0, 1, 2, 3, 4]\ (3\ and\ 4)$
+\end{center}
+
+The total swapped distance is $2$. $1$ for the $0, 1$ swap, and $1$ for the $3, 4$ swap.
+
+Now, consider:
+
+\begin{center}
+$[1, 2, 3, 0, 4]$\\
+$[1, 2, 0, 3, 4$\\
+$[1, 0, 2, 3, 4]$\\
+$[0, 1, 2, 3, 4]$
+\end{center}
+
+for a total cost of $3$. Other common sorting algorithms would fail here. Consider an insertion or selection sort:
+
+\begin{center}
+$[1, 2, 3, 0, 4]$\\
+$[0, 2, 3, 1, 4]$\\
+$[0, 1, 3, 2, 4]$\\
+$[0, 1, 2, 3, 4]$
+\end{center}
+
+for a total cost of 6. While in terms of runtime, classical sorting algorithms will be better than the one derived here, we are measuring cost in terms of distance swapped rather than operations done.
+
+\subsection{Observation}
+It is always possible to ``bubble up'' the smallest value in the list to the first element. Just find the smallest element and compare it to the elements with smaller indices. Swap it with one who's value is greater than or equal to the index of the smallest element. There will always be such an element. If the smallest element, $0$, is at index $3$, there are $3$ elements before it in the list. There are also exactly $3$ elements which have values less than $3$, one of which is not in the first $3$ elements of the list. Thus, one of the first $3$ elements must be greater than or equal to $3$. Swapping these two elements always moves both closer to their final locations. Following this observation, the algorithm can be simplified, in practice, to:
+
+Find $0$. If the element corresponding to $0$'s index is at an index before $0$, swap them and repeat. If not, swap $0$ with the first element in the list larger than $0$'s index. Repeat. When $0$ is at the head of the list repeat the process for $1$ until $1$ is at index $1$ in the list. Repeat until sorted. 
+
+\subsection{Proof of Correctness}
+Each swap places 2 elements closer to their final positions in the list. A swap will never move elements further from their final location, and given there is some sorted version of the list, the algorithm must terminate, and we will get a sorted list.
+
+\subsection{Proof of Optimality}
+Following our observation, we begin with a list of length $n$. Bubble the smallest value to the beginning. Now consider the list from indices $1$ to $n-1$. Bubble up the next smallest element. By induction, we sort the list, always improving the position of each element, so we must have sorted the list with the minimum swap distance. 
+
+\section{Application to League of Legends}
+
+Apply the algorithm as described, with the following mapping:
+
+\begin{center}
+Top $\to 0$\\
+Jungle $\to 1$ \\
+Mid $\to 2$\\
+ADC $\to 3$\\
+Supp $\to 4$
+\end{center}
+
+So if you get a tab screen like:
+
+\begin{center}
+Mid\\
+ADC\\
+Jungle\\
+Supp\\
+Top
+\end{center}
+
+The optimal swap pattern is:
+
+Swap top with supp\\
+Swap top with ADC\\
+Swap top with mid\\
+Swap jungle with mid
+
+A full table of all possible starts, as well as optimal swaps is included at the end of the document.
+
+\section{Conclusion}
+
+I had a lot of work to finish today and I didn't do any of it. =( 
+
+
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[top, jungle, mid, parent, baby]\newline
+[top, jungle, mid, parent, baby]\newline
+[top, jungle, mid, parent, baby]\newline
+[top, jungle, mid, parent, baby]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[top, jungle, baby, mid, parent]\newline
+[top, jungle, baby, mid, parent]\newline
+[top, jungle, baby, mid, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[top, jungle, baby, parent, mid]\newline
+[top, jungle, baby, parent, mid]\newline
+[top, jungle, baby, parent, mid]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[top, jungle, parent, mid, baby]\newline
+[top, jungle, parent, mid, baby]\newline
+[top, jungle, parent, mid, baby]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[top, jungle, parent, baby, mid]\newline
+[top, jungle, parent, baby, mid]\newline
+[top, jungle, parent, baby, mid]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[top, mid, jungle, baby, parent]\newline
+[top, mid, jungle, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[top, mid, jungle, parent, baby]\newline
+[top, mid, jungle, parent, baby]\newline
+[top, jungle, mid, parent, baby]\newline
+[top, jungle, mid, parent, baby]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[top, mid, baby, jungle, parent]\newline
+[top, mid, baby, jungle, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[top, mid, baby, parent, jungle]\newline
+[top, mid, baby, parent, jungle]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[top, mid, parent, jungle, baby]\newline
+[top, mid, parent, jungle, baby]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[top, mid, parent, baby, jungle]\newline
+[top, mid, parent, baby, jungle]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[top, baby, jungle, mid, parent]\newline
+[top, baby, jungle, mid, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[top, baby, jungle, parent, mid]\newline
+[top, baby, jungle, parent, mid]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[top, baby, mid, jungle, parent]\newline
+[top, baby, mid, jungle, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[top, baby, mid, parent, jungle]\newline
+[top, baby, mid, parent, jungle]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[top, baby, parent, jungle, mid]\newline
+[top, baby, parent, jungle, mid]\newline
+[top, jungle, parent, baby, mid]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[top, baby, parent, mid, jungle]\newline
+[top, baby, parent, mid, jungle]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[top, parent, jungle, mid, baby]\newline
+[top, parent, jungle, mid, baby]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[top, parent, jungle, baby, mid]\newline
+[top, parent, jungle, baby, mid]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[top, parent, mid, jungle, baby]\newline
+[top, parent, mid, jungle, baby]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[top, parent, mid, baby, jungle]\newline
+[top, parent, mid, baby, jungle]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[top, parent, baby, jungle, mid]\newline
+[top, parent, baby, jungle, mid]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[top, parent, baby, mid, jungle]\newline
+[top, parent, baby, mid, jungle]\newline
+[top, jungle, baby, mid, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[jungle, top, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[jungle, top, mid, parent, baby]\newline
+[top, jungle, mid, parent, baby]\newline
+[top, jungle, mid, parent, baby]\newline
+[top, jungle, mid, parent, baby]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[jungle, top, baby, mid, parent]\newline
+[top, jungle, baby, mid, parent]\newline
+[top, jungle, baby, mid, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[jungle, top, baby, parent, mid]\newline
+[top, jungle, baby, parent, mid]\newline
+[top, jungle, baby, parent, mid]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[jungle, top, parent, mid, baby]\newline
+[top, jungle, parent, mid, baby]\newline
+[top, jungle, parent, mid, baby]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[jungle, top, parent, baby, mid]\newline
+[top, jungle, parent, baby, mid]\newline
+[top, jungle, parent, baby, mid]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[jungle, mid, top, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[jungle, mid, top, parent, baby]\newline
+[top, jungle, mid, parent, baby]\newline
+[top, jungle, mid, parent, baby]\newline
+[top, jungle, mid, parent, baby]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[jungle, mid, baby, top, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[jungle, mid, baby, parent, top]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[jungle, mid, parent, top, baby]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[jungle, mid, parent, baby, top]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[jungle, baby, top, mid, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[jungle, baby, top, parent, mid]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[jungle, baby, mid, top, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[jungle, baby, mid, parent, top]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[jungle, baby, parent, top, mid]\newline
+[top, jungle, parent, baby, mid]\newline
+[top, jungle, parent, baby, mid]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[jungle, baby, parent, mid, top]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[jungle, parent, top, mid, baby]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[jungle, parent, top, baby, mid]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[jungle, parent, mid, top, baby]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[jungle, parent, mid, baby, top]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[jungle, parent, baby, top, mid]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[jungle, parent, baby, mid, top]\newline
+[top, jungle, baby, mid, parent]\newline
+[top, jungle, baby, mid, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[mid, top, jungle, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[mid, top, jungle, parent, baby]\newline
+[top, jungle, mid, parent, baby]\newline
+[top, jungle, mid, parent, baby]\newline
+[top, jungle, mid, parent, baby]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[mid, top, baby, jungle, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[mid, top, baby, parent, jungle]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[mid, top, parent, jungle, baby]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[mid, top, parent, baby, jungle]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[mid, jungle, top, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[mid, jungle, top, parent, baby]\newline
+[top, jungle, mid, parent, baby]\newline
+[top, jungle, mid, parent, baby]\newline
+[top, jungle, mid, parent, baby]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[mid, jungle, baby, top, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[mid, jungle, baby, parent, top]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[mid, jungle, parent, top, baby]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[mid, jungle, parent, baby, top]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[mid, baby, top, jungle, parent]\newline
+[top, baby, mid, jungle, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[mid, baby, top, parent, jungle]\newline
+[top, baby, mid, parent, jungle]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[mid, baby, jungle, top, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[mid, baby, jungle, parent, top]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[mid, baby, parent, top, jungle]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[mid, baby, parent, jungle, top]\newline
+[top, baby, mid, jungle, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[mid, parent, top, jungle, baby]\newline
+[top, parent, mid, jungle, baby]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[mid, parent, top, baby, jungle]\newline
+[top, parent, mid, baby, jungle]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[mid, parent, jungle, top, baby]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[mid, parent, jungle, baby, top]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[mid, parent, baby, top, jungle]\newline
+[top, parent, mid, baby, jungle]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[mid, parent, baby, jungle, top]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[baby, top, jungle, mid, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[baby, top, jungle, parent, mid]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[baby, top, mid, jungle, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[baby, top, mid, parent, jungle]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[baby, top, parent, jungle, mid]\newline
+[top, jungle, parent, baby, mid]\newline
+[top, jungle, parent, baby, mid]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[baby, top, parent, mid, jungle]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[baby, jungle, top, mid, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[baby, jungle, top, parent, mid]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[baby, jungle, mid, top, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[baby, jungle, mid, parent, top]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[baby, jungle, parent, top, mid]\newline
+[top, jungle, parent, baby, mid]\newline
+[top, jungle, parent, baby, mid]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[baby, jungle, parent, mid, top]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[baby, mid, top, jungle, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[baby, mid, top, parent, jungle]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[baby, mid, jungle, top, parent]\newline
+[top, mid, jungle, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[baby, mid, jungle, parent, top]\newline
+[top, mid, jungle, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[baby, mid, parent, top, jungle]\newline
+[top, mid, parent, baby, jungle]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[baby, mid, parent, jungle, top]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[baby, parent, top, jungle, mid]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[baby, parent, top, mid, jungle]\newline
+[top, parent, mid, baby, jungle]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[baby, parent, jungle, top, mid]\newline
+[top, parent, jungle, baby, mid]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[baby, parent, jungle, mid, top]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[baby, parent, mid, top, jungle]\newline
+[top, parent, mid, baby, jungle]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[baby, parent, mid, jungle, top]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[parent, top, jungle, mid, baby]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[parent, top, jungle, baby, mid]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[parent, top, mid, jungle, baby]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[parent, top, mid, baby, jungle]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[parent, top, baby, jungle, mid]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[parent, top, baby, mid, jungle]\newline
+[top, jungle, baby, mid, parent]\newline
+[top, jungle, baby, mid, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[parent, jungle, top, mid, baby]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[parent, jungle, top, baby, mid]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[parent, jungle, mid, top, baby]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[parent, jungle, mid, baby, top]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[parent, jungle, baby, top, mid]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[parent, jungle, baby, mid, top]\newline
+[top, jungle, baby, mid, parent]\newline
+[top, jungle, baby, mid, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[parent, mid, top, jungle, baby]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[parent, mid, top, baby, jungle]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[parent, mid, jungle, top, baby]\newline
+[top, mid, jungle, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[parent, mid, jungle, baby, top]\newline
+[top, mid, jungle, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[parent, mid, baby, top, jungle]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[parent, mid, baby, jungle, top]\newline
+[top, mid, baby, jungle, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[parent, baby, top, jungle, mid]\newline
+[top, baby, mid, jungle, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[parent, baby, top, mid, jungle]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[parent, baby, jungle, top, mid]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[parent, baby, jungle, mid, top]\newline
+[top, baby, jungle, mid, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[parent, baby, mid, top, jungle]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+[parent, baby, mid, jungle, top]\newline
+[top, baby, mid, jungle, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+[top, jungle, mid, baby, parent]\newline
+
+
+
+
+
+
+
+
+
+
+
+
+\end{document}  
